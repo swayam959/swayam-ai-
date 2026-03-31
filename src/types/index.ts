@@ -21,3 +21,16 @@ export interface AuthContextType {
   logout: () => void;
   isLoading: boolean;
 }
+
+export interface Question {
+  id: number;
+  question: string;
+  category: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  options?: string[];
+}
+
+export interface GenerateQuestionsResponse {
+  questions: Question[];
+  interviewType: string;
+}

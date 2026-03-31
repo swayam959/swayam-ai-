@@ -7,15 +7,9 @@ import { Card, CardBody } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Progress } from '@/components/ui/Progress';
 import { ArrowLeft, ArrowRight, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Question } from '@/types';
 
-interface Question {
-  id: number;
-  question: string;
-  category: string;
-  difficulty: 'Easy' | 'Medium' | 'Hard';
-  options?: string[];
-}
-
+// Fallback mock questions in case AI generation fails or for testing
 const mockQuestions: Record<string, Question[]> = {
   technical: [
     {
@@ -31,24 +25,6 @@ const mockQuestions: Record<string, Question[]> = {
       category: 'Programming Fundamentals',
       difficulty: 'Medium',
     },
-    {
-      id: 3,
-      question: 'Design a URL shortening service like bit.ly. What are the key considerations?',
-      category: 'System Design',
-      difficulty: 'Hard',
-    },
-    {
-      id: 4,
-      question: 'How would you implement a LRU (Least Recently Used) cache?',
-      category: 'Data Structures & Algorithms',
-      difficulty: 'Hard',
-    },
-    {
-      id: 5,
-      question: 'What are React Hooks and why were they introduced?',
-      category: 'Frontend Development',
-      difficulty: 'Medium',
-    },
   ],
   hr: [
     {
@@ -57,60 +33,12 @@ const mockQuestions: Record<string, Question[]> = {
       category: 'Introduction',
       difficulty: 'Easy',
     },
-    {
-      id: 2,
-      question: 'Why do you want to work for our company?',
-      category: 'Motivation',
-      difficulty: 'Medium',
-    },
-    {
-      id: 3,
-      question: 'What are your salary expectations?',
-      category: 'Compensation',
-      difficulty: 'Medium',
-    },
-    {
-      id: 4,
-      question: 'Where do you see yourself in 5 years?',
-      category: 'Career Goals',
-      difficulty: 'Easy',
-    },
-    {
-      id: 5,
-      question: 'Do you have any questions for us?',
-      category: 'Closing',
-      difficulty: 'Easy',
-    },
   ],
   behavioral: [
     {
       id: 1,
       question: 'Tell me about a time when you had to work with a difficult team member. How did you handle it?',
       category: 'Teamwork',
-      difficulty: 'Medium',
-    },
-    {
-      id: 2,
-      question: 'Describe a situation where you had to meet a tight deadline. What did you do?',
-      category: 'Time Management',
-      difficulty: 'Medium',
-    },
-    {
-      id: 3,
-      question: 'Give me an example of a time when you showed leadership.',
-      category: 'Leadership',
-      difficulty: 'Hard',
-    },
-    {
-      id: 4,
-      question: 'Tell me about a mistake you made and how you handled it.',
-      category: 'Problem Solving',
-      difficulty: 'Medium',
-    },
-    {
-      id: 5,
-      question: 'Describe a time when you had to adapt to a significant change at work.',
-      category: 'Adaptability',
       difficulty: 'Medium',
     },
   ],
@@ -125,19 +53,41 @@ function InterviewSessionContent() {
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const questions = mockQuestions[interviewType] || mockQuestions.technical;
+  // Load AI-generated questions from sessionStorage or use fallback
+  useEffect(() => {
+    try {
+      const storedQuestions = sessionStorage.getItem('aiGeneratedQuestions');
+      const storedType = sessionStorage.getItem('interviewType');
+
+      if (storedQuestions && storedType === interviewType) {
+        const parsedQuestions = JSON.parse(storedQuestions);
+        setQuestions(parsedQuestions);
+      } else {
+        // Use fallback mock questions if no AI questions available
+        setQuestions(mockQuestions[interviewType] || mockQuestions.technical);
+      }
+    } catch (error) {
+      console.error('Error loading questions:', error);
+      setQuestions(mockQuestions[interviewType] || mockQuestions.technical);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [interviewType]);
+
   const currentQuestion = questions[currentQuestionIndex];
-  const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+  const progress = questions.length > 0 ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0;
 
   useEffect(() => {
-    if (!isCompleted) {
+    if (!isCompleted && questions.length > 0) {
       const timer = setInterval(() => {
         setTimeElapsed((prev) => prev + 1);
       }, 1000);
       return () => clearInterval(timer);
     }
-  }, [isCompleted]);
+  }, [isCompleted, questions.length]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -146,7 +96,9 @@ function InterviewSessionContent() {
   };
 
   const handleAnswerChange = (value: string) => {
-    setAnswers({ ...answers, [currentQuestion.id]: value });
+    if (currentQuestion) {
+      setAnswers({ ...answers, [currentQuestion.id]: value });
+    }
   };
 
   const handleNext = () => {
@@ -154,6 +106,9 @@ function InterviewSessionContent() {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     } else {
       setIsCompleted(true);
+      // Clear the stored questions after completion
+      sessionStorage.removeItem('aiGeneratedQuestions');
+      sessionStorage.removeItem('interviewType');
     }
   };
 
@@ -167,6 +122,14 @@ function InterviewSessionContent() {
     router.push('/reports');
   };
 
+  if (isLoading || !currentQuestion) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
   if (isCompleted) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -177,7 +140,7 @@ function InterviewSessionContent() {
               <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Interview Completed!</h1>
               <p className="text-gray-500 dark:text-gray-400 mb-6">
-                Great job! You&apos;ve completed all {questions.length} questions.
+                Great job! You&apos;ve completed all {questions.length} AI-generated questions.
               </p>
               <div className="grid grid-cols-2 gap-4 max-w-md mx-auto mb-8">
                 <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
