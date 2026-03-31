@@ -177,7 +177,7 @@ function InterviewSessionContent() {
               <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Interview Completed!</h1>
               <p className="text-gray-500 dark:text-gray-400 mb-6">
-                Great job! You've completed all {questions.length} questions.
+                Great job! You&apos;ve completed all {questions.length} questions.
               </p>
               <div className="grid grid-cols-2 gap-4 max-w-md mx-auto mb-8">
                 <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
