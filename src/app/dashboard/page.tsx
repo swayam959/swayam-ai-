@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -29,7 +29,15 @@ export default function DashboardPage() {
     );
   }
 
-  if (!user) return null;
+  if (isLoading) {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      Loading...
+    </div>
+  );
+}
+
+if (!user) return null;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
