@@ -1,27 +1,27 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { User, AuthContextType } from '@/types';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+function stripPassword(u: User & { password: string }): User {
+  return { id: u.id, name: u.name, email: u.email, createdAt: u.createdAt };
+}
 
-  useEffect(() => {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(() => {
+    if (typeof window === 'undefined') return null;
     const stored = localStorage.getItem('swayam_user');
-    if (stored) {
-      setUser(JSON.parse(stored));
-    }
-    setIsLoading(false);
-  }, []);
+    return stored ? (JSON.parse(stored) as User) : null;
+  });
+  const [isLoading] = useState(false);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    const users = JSON.parse(localStorage.getItem('swayam_users') || '[]');
-    const found = users.find((u: User & { password: string }) => u.email === email && u.password === password);
+    const users = JSON.parse(localStorage.getItem('swayam_users') || '[]') as (User & { password: string })[];
+    const found = users.find((u) => u.email === email && u.password === password);
     if (found) {
-      const { password: _, ...userWithoutPassword } = found;
+      const userWithoutPassword = stripPassword(found);
       setUser(userWithoutPassword);
       localStorage.setItem('swayam_user', JSON.stringify(userWithoutPassword));
       return true;
@@ -30,12 +30,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signup = async (name: string, email: string, password: string): Promise<boolean> => {
-    const users = JSON.parse(localStorage.getItem('swayam_users') || '[]');
-    if (users.find((u: User) => u.email === email)) return false;
+    const users = JSON.parse(localStorage.getItem('swayam_users') || '[]') as (User & { password: string })[];
+    if (users.find((u) => u.email === email)) return false;
     const newUser = { id: Date.now().toString(), name, email, password, createdAt: new Date().toISOString() };
     users.push(newUser);
     localStorage.setItem('swayam_users', JSON.stringify(users));
-    const { password: _, ...userWithoutPassword } = newUser;
+    const userWithoutPassword = stripPassword(newUser);
     setUser(userWithoutPassword);
     localStorage.setItem('swayam_user', JSON.stringify(userWithoutPassword));
     return true;
