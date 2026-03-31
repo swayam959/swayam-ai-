@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Navbar } from '@/components/layout/Navbar';
 import { Card, CardBody } from '@/components/ui/Card';
@@ -15,6 +16,12 @@ const interviewTypes = [
 ];
 
 export default function InterviewPage() {
+  const router = useRouter();
+
+  const handleSelectInterview = (type: string) => {
+    router.push(`/interview/session?type=${type}`);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <Navbar />
@@ -28,7 +35,7 @@ export default function InterviewPage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {interviewTypes.map(({ id, title, desc, duration, difficulty, badge }) => (
-            <Card key={id} className="hover:shadow-md transition-shadow cursor-pointer hover:border-indigo-400">
+            <Card key={id} className="hover:shadow-md transition-shadow">
               <CardBody>
                 <div className="flex items-start justify-between mb-3">
                   <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
@@ -42,7 +49,14 @@ export default function InterviewPage() {
                   <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{duration}</span>
                   <span className="flex items-center gap-1"><Target className="w-3 h-3" />AI-powered</span>
                 </div>
-                <Button variant="primary" size="sm" className="w-full">Select</Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => handleSelectInterview(id)}
+                >
+                  Select
+                </Button>
               </CardBody>
             </Card>
           ))}
