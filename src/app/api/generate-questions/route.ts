@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Initialize OpenAI client - will be null if API key is not set
-const openai = process.env.OPENAI_API_KEY
-  ? new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    })
+// Initialize Gemini client - will be null if API key is not set
+const genAI = process.env.GEMINI_API_KEY
+  ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
   : null;
 
 export async function POST(request: NextRequest) {
@@ -20,9 +18,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!process.env.OPENAI_API_KEY || !openai) {
+    if (!process.env.GEMINI_API_KEY || !genAI) {
       return NextResponse.json(
-        { error: 'OpenAI API key is not configured' },
+        { error: 'Gemini API key is not configured' },
         { status: 500 }
       );
     }
@@ -115,26 +113,20 @@ Make the questions realistic and commonly asked in behavioral interviews.`,
       );
     }
 
-    // Call OpenAI API
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an expert interview question generator. Always return valid JSON arrays without any markdown formatting or code blocks. Return only the JSON array.',
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-      temperature: 0.8,
-      max_tokens: 2000,
-    });
+    // Get the Gemini model
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.1-flash-lite-preview' });
 
-    const content = completion.choices[0]?.message?.content;
+    // Call Gemini API
+    const result = await model.generateContent([
+      'You are an expert interview question generator. Always return valid JSON arrays without any markdown formatting or code blocks. Return only the JSON array.',
+      prompt,
+    ]);
+
+    const response = await result.response;
+    const content = response.text();
+
     if (!content) {
-      throw new Error('No content received from OpenAI');
+      throw new Error('No content received from Gemini');
     }
 
     // Parse the response - handle markdown code blocks if present
@@ -149,13 +141,13 @@ Make the questions realistic and commonly asked in behavioral interviews.`,
 
       questions = JSON.parse(cleanedContent);
     } catch (parseError) {
-      console.error('Failed to parse OpenAI response:', content);
-      throw new Error('Failed to parse questions from OpenAI response');
+      console.error('Failed to parse Gemini response:', content);
+      throw new Error('Failed to parse questions from Gemini response');
     }
 
     // Validate the response structure
     if (!Array.isArray(questions) || questions.length === 0) {
-      throw new Error('Invalid response format from OpenAI');
+      throw new Error('Invalid response format from Gemini');
     }
 
     // Ensure each question has the required fields
