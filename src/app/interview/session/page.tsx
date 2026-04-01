@@ -7,7 +7,7 @@ import { Card, CardBody } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Progress } from '@/components/ui/Progress';
 import { ArrowLeft, ArrowRight, CheckCircle, Clock, AlertCircle } from 'lucide-react';
-import { Question } from '@/types';
+import { Question, InterviewSession } from '@/types';
 
 // Fallback mock questions in case AI generation fails or for testing
 const mockQuestions: Record<string, Question[]> = {
@@ -55,22 +55,49 @@ function InterviewSessionContent() {
   const [isCompleted, setIsCompleted] = useState(false);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [sessionId, setSessionId] = useState<string>('');
+  const [startTime, setStartTime] = useState<string>('');
 
-  // Load AI-generated questions from sessionStorage or use fallback
+  // Initialize session and load AI-generated questions
   useEffect(() => {
     try {
+      // Generate a unique session ID
+      const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      setSessionId(newSessionId);
+
+      // Record start time
+      const sessionStartTime = new Date().toISOString();
+      setStartTime(sessionStartTime);
+
+      // Load AI-generated questions from sessionStorage or use fallback
       const storedQuestions = sessionStorage.getItem('aiGeneratedQuestions');
       const storedType = sessionStorage.getItem('interviewType');
 
+      let loadedQuestions: Question[] = [];
+
       if (storedQuestions && storedType === interviewType) {
-        const parsedQuestions = JSON.parse(storedQuestions);
-        setQuestions(parsedQuestions);
+        loadedQuestions = JSON.parse(storedQuestions);
       } else {
         // Use fallback mock questions if no AI questions available
-        setQuestions(mockQuestions[interviewType] || mockQuestions.technical);
+        loadedQuestions = mockQuestions[interviewType] || mockQuestions.technical;
       }
+
+      setQuestions(loadedQuestions);
+
+      // Initialize session in localStorage
+      const sessionData: InterviewSession = {
+        id: newSessionId,
+        interviewType,
+        questions: loadedQuestions,
+        answers: {},
+        startTime: sessionStartTime,
+        status: 'in-progress',
+      };
+
+      localStorage.setItem(`interview_session_${newSessionId}`, JSON.stringify(sessionData));
+      localStorage.setItem('current_session_id', newSessionId);
     } catch (error) {
-      console.error('Error loading questions:', error);
+      console.error('Error initializing session:', error);
       setQuestions(mockQuestions[interviewType] || mockQuestions.technical);
     } finally {
       setIsLoading(false);
@@ -80,6 +107,7 @@ function InterviewSessionContent() {
   const currentQuestion = questions[currentQuestionIndex];
   const progress = questions.length > 0 ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0;
 
+  // Timer effect
   useEffect(() => {
     if (!isCompleted && questions.length > 0) {
       const timer = setInterval(() => {
@@ -88,6 +116,24 @@ function InterviewSessionContent() {
       return () => clearInterval(timer);
     }
   }, [isCompleted, questions.length]);
+
+  // Save answers to localStorage whenever they change
+  useEffect(() => {
+    if (sessionId && Object.keys(answers).length > 0) {
+      try {
+        const sessionKey = `interview_session_${sessionId}`;
+        const sessionData = localStorage.getItem(sessionKey);
+
+        if (sessionData) {
+          const session: InterviewSession = JSON.parse(sessionData);
+          session.answers = answers;
+          localStorage.setItem(sessionKey, JSON.stringify(session));
+        }
+      } catch (error) {
+        console.error('Error saving answers:', error);
+      }
+    }
+  }, [answers, sessionId]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -105,16 +151,50 @@ function InterviewSessionContent() {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     } else {
-      setIsCompleted(true);
-      // Clear the stored questions after completion
-      sessionStorage.removeItem('aiGeneratedQuestions');
-      sessionStorage.removeItem('interviewType');
+      // Complete the interview
+      completeInterview();
     }
   };
 
   const handlePrevious = () => {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(currentQuestionIndex - 1);
+    }
+  };
+
+  const completeInterview = () => {
+    try {
+      const endTime = new Date().toISOString();
+      const duration = timeElapsed;
+
+      // Update session in localStorage
+      const sessionKey = `interview_session_${sessionId}`;
+      const sessionData = localStorage.getItem(sessionKey);
+
+      if (sessionData) {
+        const session: InterviewSession = JSON.parse(sessionData);
+        session.endTime = endTime;
+        session.duration = duration;
+        session.status = 'completed';
+        session.answers = answers;
+
+        localStorage.setItem(sessionKey, JSON.stringify(session));
+
+        // Add to completed sessions list
+        const completedSessions = JSON.parse(localStorage.getItem('completed_sessions') || '[]');
+        completedSessions.push(sessionId);
+        localStorage.setItem('completed_sessions', JSON.stringify(completedSessions));
+      }
+
+      // Clear current session and AI questions from sessionStorage
+      sessionStorage.removeItem('aiGeneratedQuestions');
+      sessionStorage.removeItem('interviewType');
+      localStorage.removeItem('current_session_id');
+
+      setIsCompleted(true);
+    } catch (error) {
+      console.error('Error completing interview:', error);
+      setIsCompleted(true);
     }
   };
 
@@ -151,6 +231,14 @@ function InterviewSessionContent() {
                   <p className="text-sm text-gray-500 dark:text-gray-400">Questions</p>
                   <p className="text-xl font-bold text-gray-900 dark:text-white">{questions.length}</p>
                 </div>
+              </div>
+              <div className="mb-6 p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Session ID: <span className="font-mono text-xs">{sessionId}</span>
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Your interview data has been saved and can be reviewed in reports.
+                </p>
               </div>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Button variant="primary" size="lg" onClick={handleFinishInterview}>

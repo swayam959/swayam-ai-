@@ -34,3 +34,14 @@ export interface GenerateQuestionsResponse {
   questions: Question[];
   interviewType: string;
 }
+
+export interface InterviewSession {
+  id: string;
+  interviewType: string;
+  questions: Question[];
+  answers: Record<number, string>;
+  startTime: string;
+  endTime?: string;
+  duration?: number; // in seconds
+  status: 'in-progress' | 'completed';
+}
