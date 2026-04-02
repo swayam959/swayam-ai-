@@ -1,121 +1,102 @@
-'use client';
+'use client'
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Sidebar } from '@/components/layout/Sidebar';
-import { Navbar } from '@/components/layout/Navbar';
-import { Card, CardHeader, CardBody } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
-import { BarChart2, TrendingUp, Award, Clock, ArrowLeft, Download, ChevronDown, ChevronUp } from 'lucide-react';
-import { InterviewSession } from '@/types';
+import React, { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { Sidebar } from '@/components/layout/Sidebar'
+import { Navbar } from '@/components/layout/Navbar'
+import { Card, CardHeader, CardBody } from '@/components/ui/Card'
+import { Badge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
+import {
+  BarChart2,
+  TrendingUp,
+  Award,
+  Clock,
+  ArrowLeft,
+  Download,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react'
+import { InterviewSession } from '@/types'
 
 const typeVariant: Record<string, 'info' | 'success' | 'warning'> = {
   technical: 'info',
   hr: 'success',
   behavioral: 'warning',
-};
+}
 
 export default function ReportsPage() {
-  const router = useRouter();
-  const [sessions, setSessions] = useState<InterviewSession[]>([]);
-  const [expandedSession, setExpandedSession] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter()
+  const [sessions, setSessions] = useState<InterviewSession[]>([])
+  const [expandedSession, setExpandedSession] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Load completed sessions from localStorage
     try {
-      const completedSessionIds = JSON.parse(localStorage.getItem('completed_sessions') || '[]');
-      const loadedSessions: InterviewSession[] = [];
+      const completedSessionIds = JSON.parse(
+        localStorage.getItem('completed_sessions') || '[]'
+      )
+
+      const loadedSessions: InterviewSession[] = []
 
       completedSessionIds.forEach((sessionId: string) => {
-        const sessionData = localStorage.getItem(`interview_session_${sessionId}`);
+        const sessionData = localStorage.getItem(
+          `interview_session_${sessionId}`
+        )
         if (sessionData) {
-          const session: InterviewSession = JSON.parse(sessionData);
+          const session: InterviewSession = JSON.parse(sessionData)
           if (session.status === 'completed') {
-            loadedSessions.push(session);
+            loadedSessions.push(session)
           }
         }
-      });
+      })
 
-      // Sort by start time (most recent first)
-      loadedSessions.sort((a, b) =>
-        new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
-      );
+      // 🔥 REMOVE DUPLICATES
+      const uniqueSessions = Array.from(
+        new Map(loadedSessions.map((s) => [s.id, s])).values()
+      )
 
-      setSessions(loadedSessions);
+      uniqueSessions.sort(
+        (a, b) =>
+          new Date(b.startTime).getTime() -
+          new Date(a.startTime).getTime()
+      )
+
+      setSessions(uniqueSessions)
     } catch (error) {
-      console.error('Error loading sessions:', error);
+      console.error('Error loading sessions:', error)
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  }, []);
+  }, [])
 
-  const avgScore = sessions.length > 0
-    ? Math.round(sessions.reduce((acc, s) => acc + (s.report?.score || 0), 0) / sessions.length)
-    : 0;
-  const totalInterviews = sessions.length;
-  const totalDuration = sessions.reduce((acc, s) => acc + (s.duration || 0), 0);
+  const avgScore =
+    sessions.length > 0
+      ? Math.round(
+          sessions.reduce((acc, s) => acc + (s.report?.score || 0), 0) /
+            sessions.length
+        )
+      : 0
+
+  const totalInterviews = sessions.length
+  const totalDuration = sessions.reduce(
+    (acc, s) => acc + (s.duration || 0),
+    0
+  )
 
   const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
 
   const formatDate = (isoString: string) => {
-    return new Date(isoString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
+    return new Date(isoString).toLocaleDateString()
+  }
 
-  const downloadReport = (session: InterviewSession) => {
-    if (!session.report) return;
-
-    const reportContent = `
-AI INTERVIEW REPORT
-==================
-
-Interview Type: ${session.interviewType.toUpperCase()}
-Session ID: ${session.id}
-Date: ${new Date(session.startTime).toLocaleString()}
-Duration: ${formatTime(session.duration || 0)}
-
-OVERALL SCORE: ${session.report.score}/100
-
-STRENGTHS:
-${session.report.strengths.map((s, i) => `${i + 1}. ${s}`).join('\n')}
-
-WEAKNESSES:
-${session.report.weaknesses.map((w, i) => `${i + 1}. ${w}`).join('\n')}
-
-SUGGESTIONS FOR IMPROVEMENT:
-${session.report.suggestions.map((s, i) => `${i + 1}. ${s}`).join('\n')}
-
-DETAILED ANALYSIS:
-${session.report.detailedAnalysis}
-
----
-Generated by Swayam AI Interview Platform
-${new Date().toLocaleString()}
-`;
-
-    const blob = new Blob([reportContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `interview-report-${session.id}.txt`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
-  const toggleExpanded = (sessionId: string) => {
-    setExpandedSession(expandedSession === sessionId ? null : sessionId);
-  };
+  const toggleExpanded = (id: string) => {
+    setExpandedSession(expandedSession === id ? null : id)
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -124,336 +105,84 @@ ${new Date().toLocaleString()}
         <div className="flex-1">
           <Navbar />
           <main className="p-8">
+
+            {/* HEADER */}
             <div className="mb-6">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => router.push('/dashboard')}
-                className="mb-4 flex items-center gap-2"
               >
-                <ArrowLeft className="w-4 h-4" />
-                Back to Dashboard
+                <ArrowLeft className="w-4 h-4" /> Back
               </Button>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Performance Reports</h1>
-              <p className="text-gray-500 dark:text-gray-400">Track your interview performance and progress over time.</p>
+              <h1 className="text-3xl font-bold mt-4">
+                Performance Reports
+              </h1>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            {/* STATS */}
+            <div className="grid grid-cols-3 gap-6 mb-8">
               <Card>
                 <CardBody>
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-indigo-100 dark:bg-indigo-900/20 rounded-lg">
-                      <BarChart2 className="w-6 h-6 text-indigo-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Interviews</p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalInterviews}</p>
-                    </div>
-                  </div>
+                  Total Interviews: {totalInterviews}
                 </CardBody>
               </Card>
-
               <Card>
-                <CardBody>
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-lg">
-                      <TrendingUp className="w-6 h-6 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Average Score</p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{avgScore}%</p>
-                    </div>
-                  </div>
-                </CardBody>
+                <CardBody>Average Score: {avgScore}%</CardBody>
               </Card>
-
               <Card>
-                <CardBody>
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
-                      <Clock className="w-6 h-6 text-purple-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Time</p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalDuration} min</p>
-                    </div>
-                  </div>
-                </CardBody>
+                <CardBody>Total Time: {totalDuration}</CardBody>
               </Card>
             </div>
 
-            {/* Interview History */}
+            {/* LIST */}
             <Card>
-              <CardHeader>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Interview History</h2>
-              </CardHeader>
-              <CardBody className="p-0">
-                {isLoading ? (
-                  <div className="px-6 py-12 text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-                    <p className="text-sm text-gray-500 mt-3">Loading your interview history...</p>
-                  </div>
-                ) : sessions.length === 0 ? (
-                  <div className="px-6 py-12 text-center">
-                    <p className="text-gray-500 dark:text-gray-400">
-                      No completed interviews yet. Start your first AI interview to see reports here!
-                    </p>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      className="mt-4"
-                      onClick={() => router.push('/interview')}
+              <CardBody>
+                {sessions.map((session, index) => (
+                  <div
+                    key={session.id + '_' + index} // ✅ FIXED KEY
+                    className="border-b p-4"
+                  >
+                    <div
+                      onClick={() => toggleExpanded(session.id)}
+                      className="flex justify-between cursor-pointer"
                     >
-                      Start Interview
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {sessions.map((session) => (
-                      <div key={session.id}>
-                        <div className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer" onClick={() => toggleExpanded(session.id)}>
-                          <div className="flex items-center gap-4 flex-1">
-                            <Badge variant={typeVariant[session.interviewType]}>{session.interviewType}</Badge>
-                            <div>
-                              <p className="text-sm font-medium text-gray-900 dark:text-white">{formatDate(session.startTime)}</p>
-                              <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
-                                <Clock className="w-3 h-3" />
-                                {formatTime(session.duration || 0)}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            {session.report && (
-                              <>
-                                <div className="text-right">
-                                  <p className="text-sm font-semibold text-gray-900 dark:text-white">{session.report.score}%</p>
-                                  <p className="text-xs text-gray-500">Score</p>
-                                </div>
-                                {session.report.score >= 80 && <Award className="w-5 h-5 text-yellow-500" />}
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    downloadReport(session);
-                                  }}
-                                  className="flex items-center gap-1"
-                                >
-                                  <Download className="w-4 h-4" />
-                                </Button>
-                              </>
-                            )}
-                            {expandedSession === session.id ? (
-                              <ChevronUp className="w-5 h-5 text-gray-400" />
-                            ) : (
-                              <ChevronDown className="w-5 h-5 text-gray-400" />
-                            )}
-                          </div>
-                        </div>
+                      <div>
+                        <Badge variant={typeVariant[session.interviewType]}>
+                          {session.interviewType}
+                        </Badge>
+                        <p>{formatDate(session.startTime)}</p>
+                      </div>
 
-                        {/* Expanded Report Details */}
-                        {expandedSession === session.id && session.report && (
-                          <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 space-y-4">
-                            <div className="grid grid-cols-3 gap-4">
-                              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3">
-                                <h4 className="text-xs font-semibold text-green-900 dark:text-green-300 mb-2">Strengths</h4>
-                                <ul className="space-y-1">
-                                  {session.report.strengths.slice(0, 3).map((strength, idx) => (
-                                    <li key={idx} className="text-xs text-green-800 dark:text-green-200">• {strength}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                              <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3">
-                                <h4 className="text-xs font-semibold text-orange-900 dark:text-orange-300 mb-2">Areas to Improve</h4>
-                                <ul className="space-y-1">
-                                  {session.report.weaknesses.slice(0, 3).map((weakness, idx) => (
-                                    <li key={idx} className="text-xs text-orange-800 dark:text-orange-200">• {weakness}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
-                                <h4 className="text-xs font-semibold text-blue-900 dark:text-blue-300 mb-2">Top Suggestions</h4>
-                                <ul className="space-y-1">
-                                  {session.report.suggestions.slice(0, 3).map((suggestion, idx) => (
-                                    <li key={idx} className="text-xs text-blue-800 dark:text-blue-200">• {suggestion}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            </div>
-                            <div className="bg-white dark:bg-gray-800 rounded-lg p-3">
-                              <h4 className="text-xs font-semibold text-gray-900 dark:text-white mb-2">Analysis Summary</h4>
-                              <p className="text-xs text-gray-700 dark:text-gray-300 line-clamp-3">
-                                {session.report.detailedAnalysis}
-                              </p>
-                            </div>
-                          </div>
+                      <div>
+                        {session.report?.score}%
+                        {expandedSession === session.id ? (
+                          <ChevronUp />
+                        ) : (
+                          <ChevronDown />
                         )}
                       </div>
-                    ))}
+                    </div>
+
+                    {expandedSession === session.id && session.report && (
+                      <div className="mt-4 text-sm">
+                        <p>
+                          <b>Strengths:</b>{' '}
+                          {session.report.strengths.join(', ')}
+                        </p>
+                        <p>
+                          <b>Weaknesses:</b>{' '}
+                          {session.report.weaknesses.join(', ')}
+                        </p>
+                      </div>
+                    )}
                   </div>
-                )}
+                ))}
               </CardBody>
             </Card>
           </main>
         </div>
       </div>
-
-      {/* Mobile Layout */}
-      <div className="lg:hidden">
-        <Navbar />
-        <main className="p-4">
-          <div className="mb-6">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push('/dashboard')}
-              className="mb-4 flex items-center gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Dashboard
-            </Button>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Performance Reports</h1>
-            <p className="text-gray-500 dark:text-gray-400 text-sm">Track your interview performance.</p>
-          </div>
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 gap-4 mb-6">
-            <Card>
-              <CardBody>
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-indigo-100 dark:bg-indigo-900/20 rounded-lg">
-                    <BarChart2 className="w-6 h-6 text-indigo-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Total Interviews</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalInterviews}</p>
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
-
-            <Card>
-              <CardBody>
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-lg">
-                    <TrendingUp className="w-6 h-6 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Average Score</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{avgScore}%</p>
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
-
-            <Card>
-              <CardBody>
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
-                    <Clock className="w-6 h-6 text-purple-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Total Time</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalDuration} min</p>
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
-          </div>
-
-          {/* Interview History */}
-          <Card>
-            <CardHeader>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Interview History</h2>
-            </CardHeader>
-            <CardBody className="p-0">
-              {isLoading ? (
-                <div className="px-4 py-12 text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-                  <p className="text-sm text-gray-500 mt-3">Loading...</p>
-                </div>
-              ) : sessions.length === 0 ? (
-                <div className="px-4 py-12 text-center">
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                    No interviews yet. Start practicing!
-                  </p>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => router.push('/interview')}
-                  >
-                    Start Interview
-                  </Button>
-                </div>
-              ) : (
-                <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {sessions.map((session) => (
-                    <div key={session.id}>
-                      <div className="px-4 py-3 cursor-pointer" onClick={() => toggleExpanded(session.id)}>
-                        <div className="flex items-center justify-between mb-2">
-                          <Badge variant={typeVariant[session.interviewType]}>{session.interviewType}</Badge>
-                          <div className="flex items-center gap-2">
-                            {session.report && session.report.score >= 80 && <Award className="w-4 h-4 text-yellow-500" />}
-                            {expandedSession === session.id ? (
-                              <ChevronUp className="w-4 h-4 text-gray-400" />
-                            ) : (
-                              <ChevronDown className="w-4 h-4 text-gray-400" />
-                            )}
-                          </div>
-                        </div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">{formatDate(session.startTime)}</p>
-                        <div className="flex items-center justify-between text-xs text-gray-500">
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {formatTime(session.duration || 0)}
-                          </span>
-                          {session.report && (
-                            <span className="font-semibold text-gray-900 dark:text-white">{session.report.score}%</span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Expanded Report Details */}
-                      {expandedSession === session.id && session.report && (
-                        <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800/50 space-y-3">
-                          <div className="space-y-3">
-                            <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3">
-                              <h4 className="text-xs font-semibold text-green-900 dark:text-green-300 mb-2">Strengths</h4>
-                              <ul className="space-y-1">
-                                {session.report.strengths.slice(0, 2).map((strength, idx) => (
-                                  <li key={idx} className="text-xs text-green-800 dark:text-green-200">• {strength}</li>
-                                ))}
-                              </ul>
-                            </div>
-                            <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3">
-                              <h4 className="text-xs font-semibold text-orange-900 dark:text-orange-300 mb-2">Areas to Improve</h4>
-                              <ul className="space-y-1">
-                                {session.report.weaknesses.slice(0, 2).map((weakness, idx) => (
-                                  <li key={idx} className="text-xs text-orange-800 dark:text-orange-200">• {weakness}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => downloadReport(session)}
-                            className="w-full flex items-center justify-center gap-2"
-                          >
-                            <Download className="w-4 h-4" />
-                            Download Full Report
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardBody>
-          </Card>
-        </main>
-      </div>
     </div>
-  );
+  )
 }
