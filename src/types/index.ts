@@ -44,4 +44,14 @@ export interface InterviewSession {
   endTime?: string;
   duration?: number; // in seconds
   status: 'in-progress' | 'completed';
+  report?: InterviewReport;
+}
+
+export interface InterviewReport {
+  score: number;
+  strengths: string[];
+  weaknesses: string[];
+  suggestions: string[];
+  detailedAnalysis: string;
+  generatedAt: string;
 }
