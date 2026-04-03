@@ -1,4 +1,7 @@
+'use client';
+
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardBody } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Interview } from '@/types';
@@ -18,6 +21,12 @@ const typeVariant: Record<string, 'info' | 'success' | 'warning'> = {
 };
 
 export function RecentInterviews() {
+  const router = useRouter();
+
+  const handleViewDetails = () => {
+    router.push('/reports');
+  };
+
   return (
     <Card className="mb-8">
       <CardHeader>
@@ -43,7 +52,13 @@ export function RecentInterviews() {
                   <p className="text-xs text-gray-500">Score</p>
                 </div>
                 <Badge variant={interview.status === 'Completed' ? 'success' : 'warning'}>{interview.status}</Badge>
-                <button className="text-indigo-600 hover:text-indigo-700"><ExternalLink className="w-4 h-4" /></button>
+                <button
+                  onClick={handleViewDetails}
+                  className="text-indigo-600 hover:text-indigo-700 transition-colors"
+                  title="View Details"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </button>
               </div>
             </div>
           ))}

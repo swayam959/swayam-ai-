@@ -21,3 +21,37 @@ export interface AuthContextType {
   logout: () => void;
   isLoading: boolean;
 }
+
+export interface Question {
+  id: number;
+  question: string;
+  category: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  options?: string[];
+}
+
+export interface GenerateQuestionsResponse {
+  questions: Question[];
+  interviewType: string;
+}
+
+export interface InterviewSession {
+  id: string;
+  interviewType: string;
+  questions: Question[];
+  answers: Record<number, string>;
+  startTime: string;
+  endTime?: string;
+  duration?: number; // in seconds
+  status: 'in-progress' | 'completed';
+  report?: InterviewReport;
+}
+
+export interface InterviewReport {
+  score: number;
+  strengths: string[];
+  weaknesses: string[];
+  suggestions: string[];
+  detailedAnalysis: string;
+  generatedAt: string;
+}
